@@ -18,6 +18,7 @@ Créer un système multi-agent simulant une exploration coordonnée où :
 ---
 
 ## 🏗️ Architecture du Projet
+
 ```
 projet-jade-exploration/
 ├── src/
@@ -46,6 +47,7 @@ projet-jade-exploration/
 ### **Étape 1 : Créer le point d'entrée (MainContainer)**
 
 Créez le fichier `MainContainer.java` pour démarrer le système.
+
 ```java
 package agents;
 
@@ -84,6 +86,7 @@ public class MainContainer {
 ### **Étape 2 : Créer l'agent coordinateur (CoordinatorAgent)**
 
 Créez le fichier `CoordinatorAgent.java` qui divise la zone et supervise l'exploration.
+
 ```java
 package agents;
 
@@ -165,6 +168,7 @@ public class CoordinatorAgent extends Agent {
 ### **Étape 3 : Créer l'agent robot (RobotAgent)**
 
 Créez le fichier `RobotAgent.java` qui explore sa zone assignée.
+
 ```java
 package agents;
 
@@ -239,11 +243,13 @@ public class RobotAgent extends Agent {
 ## 🚀 Exécution du TP
 
 ### **1. Compiler le projet**
+
 ```bash
 javac -cp jade.jar src/agents/*.java
 ```
 
 ### **2. Exécuter le système**
+
 ```bash
 java -cp .:jade.jar agents.MainContainer
 ```
@@ -253,6 +259,7 @@ java -cp .:jade.jar agents.MainContainer
 ---
 
 ## 📊 Résultat Attendu (Console)
+
 ```
 📡 Coordinator démarré.
 🤖 Robot0 couvre la zone [0 - 20]
@@ -273,88 +280,6 @@ Robot4 explore la zone...
 🎉 Tous les robots ont terminé l'exploration !
 ❌ Coordinator terminé.
 ```
-
----
-
-## 🔧 Version Améliorée avec CyclicBehaviour
-
-Pour une gestion plus robuste des messages, voici une version améliorée du **CoordinatorAgent** utilisant un `CyclicBehaviour` :
-```java
-package agents;
-
-import jade.core.Agent;
-import jade.core.AID;
-import jade.core.behaviours.CyclicBehaviour;
-import jade.lang.acl.ACLMessage;
-import jade.lang.acl.MessageTemplate;
-import jade.wrapper.AgentController;
-
-public class CoordinatorAgent extends Agent {
-
-    private int numberOfRobots;
-    private int completed = 0;
-
-    @Override
-    protected void setup() {
-        System.out.println("📡 " + getLocalName() + " démarré.");
-        
-        Object[] args = getArguments();
-        if (args != null && args.length > 0) {
-            numberOfRobots = Integer.parseInt(args[0].toString());
-        } else {
-            numberOfRobots = 3;
-        }
-
-        int zoneWidth = 100;
-        int zonePerRobot = zoneWidth / numberOfRobots;
-
-        // Créer les robots
-        for (int i = 0; i < numberOfRobots; i++) {
-            try {
-                AgentController robot = getContainerController().createNewAgent(
-                        "Robot" + i,
-                        "agents.RobotAgent",
-                        new Object[]{i * zonePerRobot, (i + 1) * zonePerRobot, getLocalName()}
-                );
-                robot.start();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        // Comportement d'écoute des messages
-        addBehaviour(new CyclicBehaviour() {
-            @Override
-            public void action() {
-                MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-                ACLMessage msg = receive(mt);
-                
-                if (msg != null) {
-                    completed++;
-                    System.out.println("✅ " + msg.getSender().getLocalName() + " a terminé sa zone !");
-                    
-                    if (completed == numberOfRobots) {
-                        System.out.println("🎉 Tous les robots ont terminé l'exploration !");
-                        myAgent.doDelete();
-                    }
-                } else {
-                    block(); // Attendre un message
-                }
-            }
-        });
-    }
-
-    @Override
-    protected void takeDown() {
-        System.out.println("❌ " + getLocalName() + " terminé.");
-    }
-}
-```
-
-**📌 Avantages :**
-- Écoute asynchrone des messages
-- Filtrage par performative (INFORM)
-- Gestion propre du blocage avec `block()`
 
 ---
 
@@ -386,19 +311,6 @@ public class CoordinatorAgent extends Agent {
 
 ---
 
-## 🎓 Exercices Pratiques
-
-### **Exercice 1 : Zone 2D**
-Modifiez le système pour gérer une grille 2D (10x10) au lieu d'une zone linéaire.
-
-### **Exercice 2 : Priorités**
-Ajoutez des priorités aux zones (certaines zones doivent être explorées en premier).
-
-### **Exercice 3 : Protocole Contract Net**
-Remplacez l'assignation directe par un appel d'offres (les robots proposent leur disponibilité).
-
-### **Exercice 4 : Rapport détaillé**
-Chaque robot envoie un rapport avec le nombre d'obstacles trouvés dans sa zone.
 
 ---
 
