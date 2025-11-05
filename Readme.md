@@ -64,7 +64,6 @@ public class MainContainer {
             Profile profile = new ProfileImpl();
             AgentContainer mainContainer = rt.createMainContainer(profile);
 
-            // Lancer le coordinateur avec 5 robots
             AgentController coordinator = mainContainer.createNewAgent(
                     "Coordinator",
                     "agents.CoordinatorAgent",
@@ -77,6 +76,7 @@ public class MainContainer {
         }
     }
 }
+
 ```
 
 **📌 Rôle :** Lance la plateforme JADE et crée le coordinateur qui créera ensuite les robots.
@@ -91,8 +91,8 @@ Créez le fichier `CoordinatorAgent.java` qui divise la zone et supervise l'expl
 package agents;
 
 import jade.core.Agent;
-import jade.core.AID;
 import jade.lang.acl.ACLMessage;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.wrapper.AgentController;
 
 public class CoordinatorAgent extends Agent {
@@ -103,29 +103,27 @@ public class CoordinatorAgent extends Agent {
     @Override
     protected void setup() {
         System.out.println("📡 " + getLocalName() + " démarré.");
-        
-        // Récupération du nombre de robots depuis les arguments
+
         Object[] args = getArguments();
         if (args != null && args.length > 0) {
             numberOfRobots = Integer.parseInt(args[0].toString());
         } else {
-            numberOfRobots = 3; // Valeur par défaut
+            numberOfRobots = 3;
         }
 
-        // Diviser la zone (zone totale : 100x100)
         int zoneWidth = 100;
         int zonePerRobot = zoneWidth / numberOfRobots;
 
-        // Créer et lancer les robots
+        // Création et démarrage des robots
         for (int i = 0; i < numberOfRobots; i++) {
             try {
                 AgentController robot = getContainerController().createNewAgent(
                         "Robot" + i,
                         "agents.RobotAgent",
                         new Object[]{
-                            i * zonePerRobot,           // Zone de départ
-                            (i + 1) * zonePerRobot,     // Zone de fin
-                            getLocalName()              // Nom du coordinateur
+                                i * zonePerRobot,
+                                (i + 1) * zonePerRobot,
+                                getLocalName()
                         }
                 );
                 robot.start();
@@ -133,28 +131,33 @@ public class CoordinatorAgent extends Agent {
                 e.printStackTrace();
             }
         }
+
+        // Comportement de réception des messages
+        addBehaviour(new CyclicBehaviour() {
+            @Override
+            public void action() {
+                ACLMessage msg = receive();
+                if (msg != null && msg.getPerformative() == ACLMessage.INFORM) {
+                    completed++;
+                    System.out.println("✅ " + msg.getSender().getLocalName() + " a terminé sa zone !");
+
+                    if (completed == numberOfRobots) {
+                        System.out.println("🎉 Tous les robots ont terminé l'exploration !");
+                        doDelete();
+                    }
+                } else {
+                    block(); // Bloque le comportement jusqu’à l’arrivée d’un nouveau message
+                }
+            }
+        });
     }
 
     @Override
     protected void takeDown() {
         System.out.println("❌ " + getLocalName() + " terminé.");
     }
-
-    // Réception des messages de fin d'exploration
-    @Override
-    protected void onMessage(ACLMessage msg) {
-        if (msg.getPerformative() == ACLMessage.INFORM) {
-            completed++;
-            System.out.println("✅ " + msg.getSender().getLocalName() + " a terminé sa zone !");
-            
-            // Vérifier si tous les robots ont terminé
-            if (completed == numberOfRobots) {
-                System.out.println("🎉 Tous les robots ont terminé l'exploration !");
-                doDelete(); // Arrêter le coordinateur
-            }
-        }
-    }
 }
+
 ```
 
 **📌 Rôle :**
@@ -185,7 +188,6 @@ public class RobotAgent extends Agent {
 
     @Override
     protected void setup() {
-        // Récupération des arguments (zone assignée)
         Object[] args = getArguments();
         if (args != null && args.length == 3) {
             startZone = Integer.parseInt(args[0].toString());
@@ -195,26 +197,23 @@ public class RobotAgent extends Agent {
 
         System.out.println("🤖 " + getLocalName() + " couvre la zone [" + startZone + " - " + endZone + "]");
 
-        // Comportement d'exploration
         addBehaviour(new Behaviour() {
             private boolean done = false;
 
             @Override
             public void action() {
-                // Simulation de l'exploration
                 System.out.println(getLocalName() + " explore la zone...");
                 try {
-                    Thread.sleep(1500); // Simulation du temps d'exploration
+                    Thread.sleep(1500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
 
-                // Envoi du message INFORM au coordinateur
                 ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
                 msg.addReceiver(new AID(coordinatorName, AID.ISLOCALNAME));
                 msg.setContent("Zone [" + startZone + "-" + endZone + "] terminée");
                 send(msg);
-                
+
                 done = true;
             }
 
@@ -230,6 +229,7 @@ public class RobotAgent extends Agent {
         System.out.println("🛑 " + getLocalName() + " terminé.");
     }
 }
+
 ```
 
 **📌 Rôle :**
